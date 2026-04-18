@@ -32,3 +32,8 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # Finder (MacOS) folder config
 .DS_Store
+
+# Convex-generated files are overwritten on `bunx convex dev`;
+# stubs under convex/_generated/ are checked in so the app type-checks
+# pre-deployment, but the generated outputs from real Convex dev runs
+# should be re-generated per environment.
