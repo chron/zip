@@ -35,7 +35,13 @@ export const useGame = (
   }, [puzzle]);
 
   const reset = useCallback(() => {
-    setState(initialState());
+    // Clear the path but keep the current attempt's timer running — the
+    // user is just wiping the drawing, not starting a fresh attempt.
+    setState((prev) => ({
+      ...prev,
+      path: [],
+      completedAt: null,
+    }));
     setDragging(false);
     completeFiredRef.current = false;
   }, []);

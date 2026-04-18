@@ -1,10 +1,9 @@
 import { useCallback, useMemo, useRef } from "react";
 import { motion } from "motion/react";
 import type { Coord, Puzzle } from "@/lib/types";
-import { coordKey, eqCoord, getNumberAt } from "@/lib/game";
+import { coordKey, getNumberAt } from "@/lib/game";
 
 const CELL = 64; // px — base cell size; SVG scales via viewBox.
-const GAP = 0; // cells are flush; grid lines drawn separately.
 
 type Props = {
   puzzle: Puzzle;
@@ -14,6 +13,9 @@ type Props = {
   onPointerEnterCell: (cell: Coord) => void;
   onPointerUp: () => void;
 };
+
+// Riso-style misregistration offset for shadows behind circles/lines.
+const RISO_OFFSET = { x: 2.2, y: 2.6 };
 
 export const Board = ({
   puzzle,
@@ -28,8 +30,8 @@ export const Board = ({
 
   const pathSet = useMemo(() => new Set(path.map(coordKey)), [path]);
 
-  const vbW = width * CELL + GAP * (width + 1);
-  const vbH = height * CELL + GAP * (height + 1);
+  const vbW = width * CELL;
+  const vbH = height * CELL;
 
   const cellAt = useCallback(
     (clientX: number, clientY: number): Coord | null => {
@@ -82,6 +84,7 @@ export const Board = ({
     [onPointerUp],
   );
 
+  // Cells — paper background with a soft wash on visited cells.
   const cells = [];
   for (let r = 0; r < height; r++) {
     for (let c = 0; c < width; c++) {
@@ -94,19 +97,15 @@ export const Board = ({
           y={r * CELL}
           width={CELL}
           height={CELL}
-          className={
-            inPath
-              ? "fill-indigo-500/20"
-              : "fill-neutral-900 transition-colors"
-          }
+          fill={inPath ? "rgba(240, 58, 71, 0.09)" : "transparent"}
         />,
       );
     }
   }
 
-  // Grid lines
+  // Grid lines — faint ink hatch, a bit more visible on the outer border.
   const gridLines = [];
-  for (let i = 0; i <= width; i++) {
+  for (let i = 1; i < width; i++) {
     gridLines.push(
       <line
         key={`v-${i}`}
@@ -114,12 +113,13 @@ export const Board = ({
         y1={0}
         x2={i * CELL}
         y2={vbH}
-        className="stroke-neutral-800"
-        strokeWidth={1.5}
+        stroke="var(--ink)"
+        strokeOpacity={0.12}
+        strokeWidth={1}
       />,
     );
   }
-  for (let i = 0; i <= height; i++) {
+  for (let i = 1; i < height; i++) {
     gridLines.push(
       <line
         key={`h-${i}`}
@@ -127,13 +127,14 @@ export const Board = ({
         y1={i * CELL}
         x2={vbW}
         y2={i * CELL}
-        className="stroke-neutral-800"
-        strokeWidth={1.5}
+        stroke="var(--ink)"
+        strokeOpacity={0.12}
+        strokeWidth={1}
       />,
     );
   }
 
-  // Walls rendered as thick segments on shared cell borders.
+  // Walls — solid ink.
   const wallLines = puzzle.walls.map((w, idx) => {
     const { a, b } = w;
     let x1 = 0;
@@ -141,7 +142,6 @@ export const Board = ({
     let x2 = 0;
     let y2 = 0;
     if (a.row === b.row) {
-      // horizontal neighbors -> vertical wall between them
       const col = Math.max(a.col, b.col);
       x1 = col * CELL;
       x2 = col * CELL;
@@ -161,8 +161,8 @@ export const Board = ({
         y1={y1}
         x2={x2}
         y2={y2}
-        className="stroke-neutral-50"
-        strokeWidth={5}
+        stroke="var(--ink)"
+        strokeWidth={6}
         strokeLinecap="round"
       />
     );
@@ -182,21 +182,31 @@ export const Board = ({
         .join(" ")
     : "";
 
+  const lineColor = isComplete ? "var(--ultramarine)" : "var(--tomato)";
+  const lineShadowColor = isComplete ? "var(--tomato)" : "var(--ultramarine)";
+
+  // Numbered cells — white chip, ink ring, with a tomato offset for riso feel.
   const numberCircles = puzzle.numbers.map((n) => {
     const { x, y } = center(n);
     const inPath = pathSet.has(coordKey(n));
+    const chipR = CELL * 0.36;
     return (
       <g key={`num-${n.value}`} pointerEvents="none">
+        {/* misregistration shadow */}
+        <circle
+          cx={x + RISO_OFFSET.x}
+          cy={y + RISO_OFFSET.y}
+          r={chipR}
+          fill="var(--tomato)"
+          opacity={inPath ? 0 : 0.85}
+        />
         <circle
           cx={x}
           cy={y}
-          r={CELL * 0.34}
-          className={
-            inPath
-              ? "fill-indigo-500 stroke-indigo-300"
-              : "fill-neutral-50 stroke-neutral-300"
-          }
-          strokeWidth={2}
+          r={chipR}
+          fill={inPath ? "var(--tomato)" : "#FBF5E6"}
+          stroke="var(--ink)"
+          strokeWidth={2.25}
         />
         <text
           x={x}
@@ -204,12 +214,13 @@ export const Board = ({
           dy={2}
           textAnchor="middle"
           dominantBaseline="middle"
-          className={
-            inPath
-              ? "fill-white font-bold"
-              : "fill-neutral-900 font-bold"
-          }
-          style={{ fontSize: CELL * 0.42 }}
+          style={{
+            fontFamily: "var(--font-display)",
+            fontWeight: 800,
+            fontSize: CELL * 0.44,
+            letterSpacing: "-0.04em",
+            fill: inPath ? "var(--paper)" : "var(--ink)",
+          }}
         >
           {n.value}
         </text>
@@ -217,7 +228,7 @@ export const Board = ({
     );
   });
 
-  // Highlight the head of the path.
+  // Head indicator — only visible when the head isn't a numbered cell.
   const head = path[path.length - 1];
   const headCircle = head
     ? (() => {
@@ -225,51 +236,69 @@ export const Board = ({
         const isOnNumber = getNumberAt(puzzle, head) !== undefined;
         if (isOnNumber) return null;
         return (
-          <motion.circle
-            cx={x}
-            cy={y}
-            r={CELL * 0.18}
-            className="fill-indigo-400"
+          <motion.g
             initial={{ scale: 0.6, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-          />
+            transition={{ type: "spring", stiffness: 400, damping: 18 }}
+          >
+            <circle cx={x} cy={y} r={CELL * 0.14} fill="var(--paper)" />
+            <circle cx={x} cy={y} r={CELL * 0.09} fill="var(--ink)" />
+          </motion.g>
         );
       })()
     : null;
 
-  void eqCoord; // silence unused-export tree-shake warning in strict mode
-
   return (
-    <svg
-      ref={svgRef}
-      viewBox={`0 0 ${vbW} ${vbH}`}
-      className="touch-none select-none w-full max-w-[min(90vw,520px)] aspect-square rounded-2xl bg-neutral-900 shadow-xl ring-1 ring-neutral-800"
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-    >
-      {cells}
-      {gridLines}
+    <div className="relative w-full max-w-[min(90vw,520px)] aspect-square">
+      {/* Riso offset plate behind the board — gives it a printed-sticker feel. */}
+      <div
+        aria-hidden
+        className="absolute inset-0 translate-x-[6px] translate-y-[7px] rounded-[22px] bg-ultramarine/90"
+      />
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${vbW} ${vbH}`}
+        className="relative touch-none select-none w-full h-full rounded-[22px] ring-[3px] ring-ink"
+        style={{ backgroundColor: "#FBF5E6" }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+      >
+        {cells}
+        {gridLines}
 
-      {pathD && (
-        <motion.path
-          d={pathD}
-          className={
-            isComplete ? "stroke-emerald-400" : "stroke-indigo-400"
-          }
-          strokeWidth={CELL * 0.32}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-          initial={false}
-          animate={{ opacity: 1 }}
-        />
-      )}
+        {pathD && (
+          <>
+            {/* misregistration shadow behind the line */}
+            <path
+              d={pathD}
+              transform={`translate(${RISO_OFFSET.x * 1.4} ${RISO_OFFSET.y * 1.4})`}
+              stroke={lineShadowColor}
+              strokeOpacity={0.55}
+              strokeWidth={CELL * 0.3}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+            <motion.path
+              d={pathD}
+              stroke={lineColor}
+              strokeWidth={CELL * 0.3}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+              initial={false}
+              animate={isComplete ? { opacity: [1, 0.7, 1] } : { opacity: 1 }}
+              transition={isComplete ? { duration: 0.7 } : { duration: 0.2 }}
+            />
+          </>
+        )}
 
-      {headCircle}
-      {wallLines}
-      {numberCircles}
-    </svg>
+        {headCircle}
+        {wallLines}
+        {numberCircles}
+      </svg>
+    </div>
   );
 };

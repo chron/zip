@@ -9,11 +9,20 @@ const convexConfigured = Boolean(import.meta.env.VITE_CONVEX_URL);
 
 export const App = () => {
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 dark">
-      <header className="mx-auto flex max-w-3xl items-center justify-between px-6 pt-8">
-        <h1 className="text-2xl font-bold tracking-tight">zip</h1>
-        <div className="text-xs text-muted-foreground">
-          {convexConfigured ? "connected" : "offline mode"}
+    <div className="min-h-screen text-ink">
+      <header className="mx-auto flex max-w-3xl items-center justify-between px-6 pt-10">
+        <h1 className="font-display text-[2.25rem] font-extrabold leading-none tracking-[-0.03em] text-ink">
+          <span className="relative inline-block">
+            zip
+            <span
+              aria-hidden
+              className="absolute -bottom-1 left-0 h-[6px] w-full translate-y-[2px] rounded-full bg-tomato"
+              style={{ clipPath: "polygon(0 40%, 100% 0, 100% 60%, 0 100%)" }}
+            />
+          </span>
+        </h1>
+        <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+          {convexConfigured ? "connected" : "offline"}
         </div>
       </header>
       <main className="mx-auto max-w-3xl px-4">
@@ -39,7 +48,7 @@ const ConvexGame = () => {
     return (
       <div className="py-16 text-center text-sm text-muted-foreground">
         No puzzles in DB yet. Run{" "}
-        <code className="rounded bg-neutral-900 px-1 py-0.5">
+        <code className="rounded bg-paper-warm px-1 py-0.5 font-mono text-ink">
           bun run scripts/seed.ts
         </code>{" "}
         to generate some.
