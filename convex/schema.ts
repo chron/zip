@@ -8,8 +8,11 @@ const coord = v.object({
 
 export default defineSchema({
   puzzles: defineTable({
+    mode: v.string(),
+    shareId: v.string(),
     width: v.number(),
     height: v.number(),
+    numberCount: v.number(),
     numbers: v.array(
       v.object({
         row: v.number(),
@@ -25,5 +28,8 @@ export default defineSchema({
     ),
     difficulty: v.optional(v.string()),
     createdAt: v.number(),
-  }).index("by_createdAt", ["createdAt"]),
+  })
+    .index("by_createdAt", ["createdAt"])
+    .index("by_shareId", ["shareId"])
+    .index("by_mode_createdAt", ["mode", "createdAt"]),
 });

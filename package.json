@@ -4,10 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -k -n vite,convex -c blue,magenta \"vite\" \"convex dev\"",
+    "dev:vite": "vite",
+    "dev:convex": "convex dev",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "convex:dev": "convex dev",
     "seed": "bun run scripts/seed.ts"
   },
   "devDependencies": {
@@ -16,6 +17,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "concurrently": "^9.2.1",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.3",
     "vite": "^8.0.8"
