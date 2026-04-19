@@ -25,6 +25,15 @@ type ValidationState = {
   detail: string;
   solutions: number;
   nodesExplored: number;
+  trace: SolveTrace | null;
+};
+
+type SolveTrace = {
+  path: Coord[];
+  fork: {
+    at: Coord;
+    options: Coord[];
+  } | null;
 };
 
 const convexConfigured = Boolean(import.meta.env.VITE_CONVEX_URL);
@@ -50,6 +59,7 @@ const ConvexEditor = () => {
   const [walls, setWalls] = useState<Wall[]>([]);
   const [tool, setTool] = useState<Tool>("number");
   const [mode, setMode] = useState<Mode>("edit");
+  const [showTrace, setShowTrace] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -215,6 +225,7 @@ const ConvexEditor = () => {
           <EditorBoard
             puzzle={puzzle}
             tool={tool}
+            trace={showTrace ? validation.trace : null}
             onCellClick={handleCellClick}
             onStopMove={handleStopMove}
             onWallClick={handleWallClick}
@@ -283,6 +294,19 @@ const ConvexEditor = () => {
               }
             />
           </dl>
+          <button
+            type="button"
+            onClick={() => setShowTrace((value) => !value)}
+            disabled={!validation.trace}
+            className={cn(
+              "mt-3 h-8 w-full rounded-md border px-3 text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-40",
+              showTrace && validation.trace
+                ? "border-ultramarine bg-ultramarine text-paper"
+                : "border-ink/25 bg-paper text-ink hover:bg-paper-warm",
+            )}
+          >
+            {showTrace ? "Hide solve trace" : "Show solve trace"}
+          </button>
         </Panel>
 
         <div className="flex flex-wrap gap-2">
@@ -336,12 +360,14 @@ const OfflineEditor = () => (
 const EditorBoard = ({
   puzzle,
   tool,
+  trace,
   onCellClick,
   onStopMove,
   onWallClick,
 }: {
   puzzle: Puzzle;
   tool: Tool;
+  trace: SolveTrace | null;
   onCellClick: (cell: Coord) => void;
   onStopMove: (value: number, target: Coord) => void;
   onWallClick: (wall: Wall) => void;
@@ -423,6 +449,7 @@ const EditorBoard = ({
       : false;
 
   const cells = [];
+  const numberChips = [];
   for (let row = 0; row < puzzle.height; row++) {
     for (let col = 0; col < puzzle.width; col++) {
       const cell = { row, col };
@@ -450,42 +477,45 @@ const EditorBoard = ({
               onCellClick(cell);
             }}
           />
-          {number && (
-            <g pointerEvents="none">
-              <circle
-                cx={col * CELL + CELL / 2 + 2}
-                cy={row * CELL + CELL / 2 + 3}
-                r={CELL * 0.32}
-                fill="var(--ultramarine)"
-                opacity={0.85}
-              />
-              <circle
-                cx={col * CELL + CELL / 2}
-                cy={row * CELL + CELL / 2}
-                r={CELL * 0.32}
-                fill="var(--tomato)"
-                stroke="var(--ink)"
-                strokeWidth={2.25}
-              />
-              <text
-                x={col * CELL + CELL / 2}
-                y={row * CELL + CELL / 2}
-                dy={2}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                style={{
-                  fontFamily: "var(--font-display)",
-                  fontWeight: 800,
-                  fontSize: CELL * 0.42,
-                  fill: "var(--paper)",
-                }}
-              >
-                {number.value}
-              </text>
-            </g>
-          )}
         </g>,
       );
+
+      if (number) {
+        numberChips.push(
+          <g key={`number-${number.value}`} pointerEvents="none">
+            <circle
+              cx={col * CELL + CELL / 2 + 2}
+              cy={row * CELL + CELL / 2 + 3}
+              r={CELL * 0.32}
+              fill="var(--ultramarine)"
+              opacity={0.85}
+            />
+            <circle
+              cx={col * CELL + CELL / 2}
+              cy={row * CELL + CELL / 2}
+              r={CELL * 0.32}
+              fill="var(--tomato)"
+              stroke="var(--ink)"
+              strokeWidth={2.25}
+            />
+            <text
+              x={col * CELL + CELL / 2}
+              y={row * CELL + CELL / 2}
+              dy={2}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              style={{
+                fontFamily: "var(--font-display)",
+                fontWeight: 800,
+                fontSize: CELL * 0.42,
+                fill: "var(--paper)",
+              }}
+            >
+              {number.value}
+            </text>
+          </g>,
+        );
+      }
     }
   }
 
@@ -552,6 +582,8 @@ const EditorBoard = ({
       </text>
     </g>
   );
+
+  const solveTrace = trace && <SolveTraceLayer trace={trace} />;
 
   const wallHits = [];
   for (let row = 0; row < puzzle.height; row++) {
@@ -628,11 +660,81 @@ const EditorBoard = ({
         >
           {cells}
           {gridLines}
+          {solveTrace}
           {dragPreview}
           {wallHits}
+          {numberChips}
         </svg>
       </div>
     </div>
+  );
+};
+
+const SolveTraceLayer = ({ trace }: { trace: SolveTrace }) => {
+  const mainPath = pathD(trace.path);
+  const fork = trace.fork;
+
+  return (
+    <g pointerEvents="none">
+      {mainPath && (
+        <>
+          <path
+            d={mainPath}
+            transform="translate(2 2)"
+            stroke="var(--tomato)"
+            strokeOpacity={0.28}
+            strokeWidth={CELL * 0.2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+          <path
+            d={mainPath}
+            stroke="var(--ultramarine)"
+            strokeOpacity={0.52}
+            strokeWidth={CELL * 0.2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="none"
+          />
+        </>
+      )}
+
+      {fork && (
+        <g>
+          {fork.options.map((option) => {
+            const forkLeg = pathD([fork.at, option]);
+            return (
+              <path
+                key={coordKey(option)}
+                d={forkLeg}
+                stroke="var(--ultramarine)"
+                strokeOpacity={0.42}
+                strokeWidth={CELL * 0.13}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeDasharray="8 8"
+                fill="none"
+              />
+            );
+          })}
+          <circle
+            cx={center(fork.at).x}
+            cy={center(fork.at).y}
+            r={CELL * 0.13}
+            fill="var(--paper)"
+            stroke="var(--ultramarine)"
+            strokeWidth={3}
+          />
+          <circle
+            cx={center(fork.at).x}
+            cy={center(fork.at).y}
+            r={CELL * 0.055}
+            fill="var(--ultramarine)"
+          />
+        </g>
+      )}
+    </g>
   );
 };
 
@@ -804,6 +906,7 @@ const validatePuzzle = (puzzle: Puzzle): ValidationState => {
       detail: "The path needs a start and a finish before it can be played.",
       solutions: 0,
       nodesExplored: 0,
+      trace: null,
     };
   }
 
@@ -817,8 +920,11 @@ const validatePuzzle = (puzzle: Puzzle): ValidationState => {
         detail: "Move a stop or remove a wall until every cell can be zipped.",
         solutions: 0,
         nodesExplored: result.nodesExplored,
+        trace: null,
       };
     }
+
+    const trace = buildSolveTrace(result.solutions);
 
     if (result.solutions.length > 1) {
       return {
@@ -829,6 +935,7 @@ const validatePuzzle = (puzzle: Puzzle): ValidationState => {
           "This puzzle has more than one solution. Fine for now; we can add uniqueness tools next.",
         solutions: result.solutions.length,
         nodesExplored: result.nodesExplored,
+        trace,
       };
     }
 
@@ -839,6 +946,7 @@ const validatePuzzle = (puzzle: Puzzle): ValidationState => {
       detail: "The solver found one complete path through the board.",
       solutions: 1,
       nodesExplored: result.nodesExplored,
+      trace,
     };
   } catch (error) {
     if (error instanceof BudgetExceededError) {
@@ -850,6 +958,7 @@ const validatePuzzle = (puzzle: Puzzle): ValidationState => {
           "The solver hit its budget. Try a smaller grid or fewer ambiguous passages.",
         solutions: 0,
         nodesExplored: error.nodesExplored,
+        trace: null,
       };
     }
     return {
@@ -860,13 +969,75 @@ const validatePuzzle = (puzzle: Puzzle): ValidationState => {
         "Something about the grid is invalid. Resetting the draft is the quickest way out.",
       solutions: 0,
       nodesExplored: 0,
+      trace: null,
     };
   }
 };
 
+const buildSolveTrace = (solutions: Coord[][]): SolveTrace | null => {
+  const first = solutions[0];
+  if (!first) return null;
+  const second = solutions[1];
+  if (!second) return { path: first, fork: null };
+
+  let divergenceIndex = 0;
+  while (
+    divergenceIndex < first.length &&
+    divergenceIndex < second.length &&
+    sameCoord(first[divergenceIndex]!, second[divergenceIndex]!)
+  ) {
+    divergenceIndex++;
+  }
+
+  if (divergenceIndex >= first.length || divergenceIndex >= second.length) {
+    return { path: first, fork: null };
+  }
+
+  const path = first.slice(0, divergenceIndex);
+  const at = path[path.length - 1];
+  if (!at) {
+    return { path: [], fork: null };
+  }
+
+  const options = dedupeCoords([first[divergenceIndex]!, second[divergenceIndex]!]);
+
+  return {
+    path,
+    fork: {
+      at,
+      options,
+    },
+  };
+};
+
+const pathD = (path: Coord[]) =>
+  path
+    .map((coord, index) => {
+      const { x, y } = center(coord);
+      return `${index === 0 ? "M" : "L"} ${x} ${y}`;
+    })
+    .join(" ");
+
+const center = (coord: Coord) => ({
+  x: coord.col * CELL + CELL / 2,
+  y: coord.row * CELL + CELL / 2,
+});
+
 const coordKey = (coord: Coord) => `${coord.row},${coord.col}`;
 
 const sameCoord = (a: Coord, b: Coord) => a.row === b.row && a.col === b.col;
+
+const dedupeCoords = (coords: Coord[]) => {
+  const seen = new Set<string>();
+  const out: Coord[] = [];
+  for (const coord of coords) {
+    const key = coordKey(coord);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(coord);
+  }
+  return out;
+};
 
 const renumber = (numbers: NumberedCell[]): NumberedCell[] =>
   numbers.map((number, index) => ({ ...number, value: index + 1 }));
