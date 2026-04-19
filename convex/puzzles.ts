@@ -57,8 +57,9 @@ export const create = mutation({
 
 export const getRandom = query({
   // `seed` picks the puzzle deterministically so a re-run of this subscription
-  // returns the same row. `before` bounds the read set to puzzles that existed
-  // when the subscription started, so new inserts don't invalidate it.
+  // returns the same row. `before` bounds the read set to puzzles and
+  // completions that existed when the subscription started, so new inserts
+  // don't invalidate it mid-play.
   args: {
     seed: v.number(),
     mode: v.optional(v.string()),
@@ -72,8 +73,16 @@ export const getRandom = query({
         q.eq("mode", targetMode).lte("createdAt", before),
       )
       .collect();
-    if (all.length === 0) return null;
-    return all[Math.abs(seed) % all.length]!;
+
+    const completedBefore = await ctx.db
+      .query("completions")
+      .withIndex("by_completedAt", (q) => q.lte("completedAt", before))
+      .collect();
+    const completedIds = new Set(completedBefore.map((c) => c.puzzleId));
+    const unsolved = all.filter((p) => !completedIds.has(p._id));
+
+    if (unsolved.length === 0) return null;
+    return unsolved[Math.abs(seed) % unsolved.length]!;
   },
 });
 
@@ -91,6 +100,30 @@ export const getByShareId = query({
       .query("puzzles")
       .withIndex("by_shareId", (q) => q.eq("shareId", shareId))
       .first();
+  },
+});
+
+export const list = query({
+  args: {},
+  handler: async (ctx) => {
+    const rows = await ctx.db
+      .query("puzzles")
+      .withIndex("by_createdAt")
+      .order("desc")
+      .collect();
+
+    return rows.map((puzzle) => ({
+      _id: puzzle._id,
+      _creationTime: puzzle._creationTime,
+      shareId: puzzle.shareId,
+      mode: puzzle.mode,
+      width: puzzle.width,
+      height: puzzle.height,
+      numberCount: puzzle.numberCount,
+      wallCount: puzzle.walls.length,
+      difficulty: puzzle.difficulty ?? null,
+      createdAt: puzzle.createdAt,
+    }));
   },
 });
 

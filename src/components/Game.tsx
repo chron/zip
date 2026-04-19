@@ -1,25 +1,60 @@
 import { useCallback, useState } from "react";
 import { Board } from "./Board";
-import { CompleteDialog } from "./CompleteDialog";
+import {
+  CompleteDialog,
+  type PerceivedDifficulty,
+} from "./CompleteDialog";
 import { Button } from "@/components/ui/button";
 import { useGame } from "@/hooks/useGame";
 import { formatElapsed, useElapsed } from "@/hooks/useTimer";
 import { isComplete } from "@/lib/game";
 import type { Puzzle } from "@/lib/types";
+import type { Id } from "../../convex/_generated/dataModel";
 
 type Props = {
   puzzle: Puzzle;
+  generatedDifficulty?: string | null;
+  newPuzzleLabel?: string;
+  recordCompletion?: (
+    durationMs: number,
+  ) => Promise<Id<"completions"> | null>;
+  onSetPerceivedDifficulty?: (
+    completionId: Id<"completions">,
+    difficulty: PerceivedDifficulty,
+  ) => Promise<void>;
   onNewPuzzle: () => void;
 };
 
-export const Game = ({ puzzle, onNewPuzzle }: Props) => {
+export const Game = ({
+  puzzle,
+  generatedDifficulty,
+  newPuzzleLabel = "New puzzle",
+  recordCompletion,
+  onSetPerceivedDifficulty,
+  onNewPuzzle,
+}: Props) => {
   const [finalElapsed, setFinalElapsed] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [completionId, setCompletionId] = useState<Id<"completions"> | null>(
+    null,
+  );
 
-  const handleComplete = useCallback((elapsed: number) => {
-    setFinalElapsed(elapsed);
-    setDialogOpen(true);
-  }, []);
+  const handleComplete = useCallback(
+    (elapsed: number) => {
+      setFinalElapsed(elapsed);
+      setDialogOpen(true);
+      setCompletionId(null);
+      if (recordCompletion) {
+        recordCompletion(elapsed)
+          .then((id) => setCompletionId(id))
+          .catch(() => {
+            // Non-fatal: the user still sees their time; we just won't be
+            // able to attach a perceived-difficulty rating to this run.
+          });
+      }
+    },
+    [recordCompletion],
+  );
 
   const { state, beginAt, moveTo, endDrag, reset } = useGame(
     puzzle,
@@ -32,12 +67,14 @@ export const Game = ({ puzzle, onNewPuzzle }: Props) => {
   const handlePlayAgain = useCallback(() => {
     setDialogOpen(false);
     setFinalElapsed(null);
+    setCompletionId(null);
     onNewPuzzle();
   }, [onNewPuzzle]);
 
   const handleReset = useCallback(() => {
     setDialogOpen(false);
     setFinalElapsed(null);
+    setCompletionId(null);
     reset();
   }, [reset]);
 
@@ -61,7 +98,7 @@ export const Game = ({ puzzle, onNewPuzzle }: Props) => {
             onClick={onNewPuzzle}
             className="font-mono uppercase tracking-[0.12em] bg-ink text-paper hover:bg-ink/90"
           >
-            New puzzle
+            {newPuzzleLabel}
           </Button>
         </div>
       </div>
@@ -86,6 +123,9 @@ export const Game = ({ puzzle, onNewPuzzle }: Props) => {
       <CompleteDialog
         open={dialogOpen}
         elapsedMs={finalElapsed ?? 0}
+        generatedDifficulty={generatedDifficulty ?? null}
+        completionId={completionId}
+        onSetPerceivedDifficulty={onSetPerceivedDifficulty}
         onPlayAgain={handlePlayAgain}
         onOpenChange={setDialogOpen}
       />

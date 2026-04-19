@@ -75,7 +75,7 @@ body,
   margin: 0;
   overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;
-  touch-action: none;
+  touch-action: pan-y;
 }
 
 body {

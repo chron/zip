@@ -1,8 +1,10 @@
-import { findSolutions } from "./solver";
+import { BudgetExceededError, findSolutions } from "./solver";
 
 export type Coord = { row: number; col: number };
 export type NumberedCell = Coord & { value: number };
 export type Wall = { a: Coord; b: Coord };
+
+export type Difficulty = "easy" | "medium" | "hard" | "expert";
 
 export type GeneratedPuzzle = {
   width: number;
@@ -10,6 +12,18 @@ export type GeneratedPuzzle = {
   numbers: NumberedCell[];
   walls: Wall[];
   seed: number;
+  // Total DFS nodes explored to verify uniqueness. Proxies branching — higher
+  // means the solver had more to rule out, which correlates with harder play.
+  nodesExplored: number;
+  difficulty: Difficulty;
+};
+
+// Rough buckets — tune against real puzzles once we have data.
+const difficultyFor = (nodes: number): Difficulty => {
+  if (nodes < 250) return "easy";
+  if (nodes < 1500) return "medium";
+  if (nodes < 8000) return "hard";
+  return "expert";
 };
 
 type Rng = () => number;
@@ -150,6 +164,9 @@ export type GenerateOptions = {
   // Greedily add walls until the puzzle has exactly one solution. Defaults on.
   // Throws if uniqueness can't be reached (non-path edges exhausted).
   ensureUnique?: boolean;
+  // Cap on DFS nodes per solver call. Throws `BudgetExceededError` above this;
+  // the top-level `generate` wrapper catches + retries with a fresh seed.
+  solverNodeBudget?: number;
   // Optional deterministic seed. If omitted, a random one is chosen and
   // returned on the result so the output can be reproduced from logs.
   seed?: number;
@@ -172,19 +189,20 @@ const validate = (
     throw new Error("wallDensity must be between 0 and 1");
 };
 
-export const generatePuzzle = (opts: GenerateOptions = {}): GeneratedPuzzle => {
+// Generates a single puzzle for a specific seed. May throw
+// `BudgetExceededError` if the solver can't confirm uniqueness within the
+// node budget — `generatePuzzle` catches that and retries with a new seed.
+const generateOnce = (opts: GenerateOptions, seed: number): GeneratedPuzzle => {
   const width = opts.width ?? 5;
   const height = opts.height ?? 5;
   const numberCount = opts.numberCount ?? 4;
   const wallDensity = opts.wallDensity ?? 0;
   const ensureUnique = opts.ensureUnique ?? true;
-  const seed = opts.seed ?? randomSeed();
+  const nodeBudget = opts.solverNodeBudget ?? 200_000;
   validate(width, height, numberCount, wallDensity);
 
   const rng = mulberry32(seed);
 
-  // Retry a handful of times in case the random start hits a dead branch.
-  // For small grids this almost always succeeds on the first try.
   let path: Coord[] | null = null;
   let attempt = 0;
   while (!path && attempt < 20) {
@@ -207,24 +225,19 @@ export const generatePuzzle = (opts: GenerateOptions = {}): GeneratedPuzzle => {
   const initialTake = Math.round(candidates.length * wallDensity);
   const walls: Wall[] = candidates.slice(0, initialTake);
 
-  // Every edge on the intended path — walling any of these would kill the
-  // intended solution, so we must never pick one as a distinguishing wall.
   const pathEdges = new Set<string>();
   for (let i = 0; i < path.length - 1; i++) {
     pathEdges.add(edgeKey(path[i]!, path[i + 1]!));
   }
 
+  let finalNodes = 0;
   if (ensureUnique) {
-    // Each iteration: find at most 2 solutions. If there are <=1, we're done.
-    // Otherwise identify an edge used by one of the alternates but NOT by the
-    // intended path, and wall it. That guarantees we eliminate at least one
-    // alternate per iteration — far fewer calls than blindly walling until
-    // uniqueness falls out.
     while (true) {
-      const { solutions } = findSolutions(
+      const { solutions, nodesExplored } = findSolutions(
         { width, height, numbers, walls },
-        2,
+        { max: 2, nodeBudget },
       );
+      finalNodes = nodesExplored;
       if (solutions.length <= 1) break;
 
       let picked: Wall | null = null;
@@ -242,5 +255,35 @@ export const generatePuzzle = (opts: GenerateOptions = {}): GeneratedPuzzle => {
     }
   }
 
-  return { width, height, numbers, walls, seed };
+  return {
+    width,
+    height,
+    numbers,
+    walls,
+    seed,
+    nodesExplored: finalNodes,
+    difficulty: difficultyFor(finalNodes),
+  };
+};
+
+export const generatePuzzle = (opts: GenerateOptions = {}): GeneratedPuzzle => {
+  if (opts.seed !== undefined) return generateOnce(opts, opts.seed);
+
+  // When no seed is pinned, retry on solver-budget blowouts with fresh seeds.
+  // Some path+waypoint combinations are pathological for the solver; just try
+  // another rather than waiting minutes on a hostile one.
+  const maxAttempts = 30;
+  let lastErr: unknown;
+  for (let i = 0; i < maxAttempts; i++) {
+    const seed = randomSeed();
+    try {
+      return generateOnce(opts, seed);
+    } catch (err) {
+      lastErr = err;
+      if (!(err instanceof BudgetExceededError)) throw err;
+    }
+  }
+  throw lastErr instanceof Error
+    ? lastErr
+    : new Error("generatePuzzle: exhausted seed retries");
 };

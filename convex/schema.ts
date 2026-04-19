@@ -32,4 +32,19 @@ export default defineSchema({
     .index("by_createdAt", ["createdAt"])
     .index("by_shareId", ["shareId"])
     .index("by_mode_createdAt", ["mode", "createdAt"]),
+  completions: defineTable({
+    puzzleId: v.id("puzzles"),
+    durationMs: v.number(),
+    perceivedDifficulty: v.optional(
+      v.union(
+        v.literal("easy"),
+        v.literal("medium"),
+        v.literal("hard"),
+        v.literal("expert"),
+      ),
+    ),
+    completedAt: v.number(),
+  })
+    .index("by_puzzleId", ["puzzleId"])
+    .index("by_completedAt", ["completedAt"]),
 });

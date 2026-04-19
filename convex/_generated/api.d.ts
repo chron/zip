@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as completions from "../completions.js";
 import type * as lib_generator from "../lib/generator.js";
 import type * as lib_shareId from "../lib/shareId.js";
 import type * as lib_solver from "../lib/solver.js";
@@ -20,6 +21,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  completions: typeof completions;
   "lib/generator": typeof lib_generator;
   "lib/shareId": typeof lib_shareId;
   "lib/solver": typeof lib_solver;
