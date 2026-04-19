@@ -10,6 +10,7 @@
 
 import type * as lib_generator from "../lib/generator.js";
 import type * as lib_shareId from "../lib/shareId.js";
+import type * as lib_solver from "../lib/solver.js";
 import type * as puzzles from "../puzzles.js";
 
 import type {
@@ -21,6 +22,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   "lib/generator": typeof lib_generator;
   "lib/shareId": typeof lib_shareId;
+  "lib/solver": typeof lib_solver;
   puzzles: typeof puzzles;
 }>;
 

@@ -1,3 +1,5 @@
+import { findSolutions } from "./solver";
+
 export type Coord = { row: number; col: number };
 export type NumberedCell = Coord & { value: number };
 export type Wall = { a: Coord; b: Coord };
@@ -51,8 +53,9 @@ const shuffle = <T>(arr: T[], rng: Rng): T[] => {
   return a;
 };
 
-// Randomized backtracking Hamiltonian path on a w x h grid.
-// Fast enough for small grids (up to ~7x7). Larger boards will want a smarter algorithm.
+// Randomized Hamiltonian path on a w x h grid, using Warnsdorff's rule:
+// at each step prefer neighbors with the fewest unvisited neighbors. This
+// almost always finds a path on the first attempt even up to 8x8+.
 const hamiltonianPath = (w: number, h: number, rng: Rng): Coord[] => {
   const total = w * h;
   const visited = new Set<string>();
@@ -63,16 +66,23 @@ const hamiltonianPath = (w: number, h: number, rng: Rng): Coord[] => {
     col: Math.floor(rng() * w),
   };
 
+  const unvisitedDegree = (c: Coord) =>
+    neighbors(c, w, h).filter((n) => !visited.has(key(n))).length;
+
   const dfs = (c: Coord): boolean => {
     path.push(c);
     visited.add(key(c));
     if (path.length === total) return true;
 
-    const opts = shuffle(neighbors(c, w, h), rng);
+    // Shuffle first so ties break randomly, then sort by Warnsdorff degree.
+    const opts = shuffle(
+      neighbors(c, w, h).filter((n) => !visited.has(key(n))),
+      rng,
+    );
+    opts.sort((a, b) => unvisitedDegree(a) - unvisitedDegree(b));
+
     for (const n of opts) {
-      if (!visited.has(key(n))) {
-        if (dfs(n)) return true;
-      }
+      if (dfs(n)) return true;
     }
 
     path.pop();
@@ -133,8 +143,13 @@ export type GenerateOptions = {
   width?: number;
   height?: number;
   numberCount?: number;
-  // Fraction (0..1) of non-path adjacencies to convert into walls. 0 = none.
+  // Starting fraction (0..1) of non-path adjacencies to convert into walls.
+  // If `ensureUnique` is true, more walls may be added beyond this floor until
+  // the solution is unique.
   wallDensity?: number;
+  // Greedily add walls until the puzzle has exactly one solution. Defaults on.
+  // Throws if uniqueness can't be reached (non-path edges exhausted).
+  ensureUnique?: boolean;
   // Optional deterministic seed. If omitted, a random one is chosen and
   // returned on the result so the output can be reproduced from logs.
   seed?: number;
@@ -162,6 +177,7 @@ export const generatePuzzle = (opts: GenerateOptions = {}): GeneratedPuzzle => {
   const height = opts.height ?? 5;
   const numberCount = opts.numberCount ?? 4;
   const wallDensity = opts.wallDensity ?? 0;
+  const ensureUnique = opts.ensureUnique ?? true;
   const seed = opts.seed ?? randomSeed();
   validate(width, height, numberCount, wallDensity);
 
@@ -187,11 +203,43 @@ export const generatePuzzle = (opts: GenerateOptions = {}): GeneratedPuzzle => {
     value: n + 1,
   }));
 
-  let walls: Wall[] = [];
-  if (wallDensity > 0) {
-    const candidates = shuffle(nonPathAdjacencies(path, width, height), rng);
-    const take = Math.round(candidates.length * wallDensity);
-    walls = candidates.slice(0, take);
+  const candidates = shuffle(nonPathAdjacencies(path, width, height), rng);
+  const initialTake = Math.round(candidates.length * wallDensity);
+  const walls: Wall[] = candidates.slice(0, initialTake);
+
+  // Every edge on the intended path — walling any of these would kill the
+  // intended solution, so we must never pick one as a distinguishing wall.
+  const pathEdges = new Set<string>();
+  for (let i = 0; i < path.length - 1; i++) {
+    pathEdges.add(edgeKey(path[i]!, path[i + 1]!));
+  }
+
+  if (ensureUnique) {
+    // Each iteration: find at most 2 solutions. If there are <=1, we're done.
+    // Otherwise identify an edge used by one of the alternates but NOT by the
+    // intended path, and wall it. That guarantees we eliminate at least one
+    // alternate per iteration — far fewer calls than blindly walling until
+    // uniqueness falls out.
+    while (true) {
+      const { solutions } = findSolutions(
+        { width, height, numbers, walls },
+        2,
+      );
+      if (solutions.length <= 1) break;
+
+      let picked: Wall | null = null;
+      outer: for (const sol of solutions) {
+        for (let i = 0; i < sol.length - 1; i++) {
+          const e = edgeKey(sol[i]!, sol[i + 1]!);
+          if (!pathEdges.has(e)) {
+            picked = { a: sol[i]!, b: sol[i + 1]! };
+            break outer;
+          }
+        }
+      }
+      if (!picked) throw new Error("No distinguishing edge available");
+      walls.push(picked);
+    }
   }
 
   return { width, height, numbers, walls, seed };

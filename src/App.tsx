@@ -33,11 +33,18 @@ export const App = () => {
 };
 
 const ConvexGame = () => {
-  const [token, setToken] = useState(() => Math.floor(Math.random() * 1e9));
-  const result = useQuery(api.puzzles.getRandom, { seed: token });
+  const [pick, setPick] = useState(() => ({
+    seed: Math.floor(Math.random() * 1e9),
+    before: Date.now(),
+  }));
+  const result = useQuery(api.puzzles.getRandom, pick);
 
   const handleNew = useCallback(
-    () => setToken(Math.floor(Math.random() * 1e9)),
+    () =>
+      setPick({
+        seed: Math.floor(Math.random() * 1e9),
+        before: Date.now(),
+      }),
     [],
   );
 
@@ -63,7 +70,36 @@ const ConvexGame = () => {
     walls: result.walls,
   };
 
-  return <Game key={result._id + ":" + token} puzzle={puzzle} onNewPuzzle={handleNew} />;
+  return (
+    <div className="flex flex-col items-center gap-3 py-4">
+      <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+        <span>
+          {result.width}×{result.height}
+        </span>
+        <span className="mx-2 text-ink/20">·</span>
+        <span>{result.numberCount ?? result.numbers.length} numbers</span>
+        {result.walls.length > 0 && (
+          <>
+            <span className="mx-2 text-ink/20">·</span>
+            <span>{result.walls.length} walls</span>
+          </>
+        )}
+        {result.difficulty && (
+          <>
+            <span className="mx-2 text-ink/20">·</span>
+            <span>{result.difficulty}</span>
+          </>
+        )}
+        <span className="mx-2 text-ink/20">·</span>
+        <span className="text-ink/60">{result.shareId}</span>
+      </div>
+      <Game
+        key={result._id + ":" + pick.seed}
+        puzzle={puzzle}
+        onNewPuzzle={handleNew}
+      />
+    </div>
+  );
 };
 
 // Fallback that generates locally so the game is playable before Convex is wired up.
