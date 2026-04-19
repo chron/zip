@@ -55,7 +55,11 @@ export const useGame = (
         if (prev.path.length === 0) {
           if (getNumberAt(puzzle, cell) !== 1) return prev;
           completeFiredRef.current = false;
-          return { path: [cell], startedAt: Date.now(), completedAt: null };
+          return {
+            path: [cell],
+            startedAt: prev.startedAt ?? Date.now(),
+            completedAt: null,
+          };
         }
 
         // Case 2: touched a cell already on the path — truncate to (and
