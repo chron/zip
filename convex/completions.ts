@@ -1,3 +1,4 @@
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { mutation } from "./_generated/server";
 
@@ -14,8 +15,10 @@ export const record = mutation({
     durationMs: v.number(),
   },
   handler: async (ctx, args) => {
+    const userId = await getAuthUserId(ctx);
     const id = await ctx.db.insert("completions", {
       puzzleId: args.puzzleId,
+      userId: userId ?? undefined,
       durationMs: args.durationMs,
       completedAt: Date.now(),
     });
@@ -29,6 +32,14 @@ export const setPerceivedDifficulty = mutation({
     difficulty: perceivedDifficulty,
   },
   handler: async (ctx, { completionId, difficulty }) => {
+    const completion = await ctx.db.get(completionId);
+    if (!completion) throw new Error("Completion not found");
+
+    const userId = await getAuthUserId(ctx);
+    if (completion.userId && completion.userId !== userId) {
+      throw new Error("Unauthorized");
+    }
+
     await ctx.db.patch(completionId, { perceivedDifficulty: difficulty });
   },
 });

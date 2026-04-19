@@ -8,11 +8,14 @@
  * @module
  */
 
+import type * as auth from "../auth.js";
 import type * as completions from "../completions.js";
+import type * as http from "../http.js";
 import type * as lib_generator from "../lib/generator.js";
 import type * as lib_shareId from "../lib/shareId.js";
 import type * as lib_solver from "../lib/solver.js";
 import type * as puzzles from "../puzzles.js";
+import type * as viewer from "../viewer.js";
 
 import type {
   ApiFromModules,
@@ -21,11 +24,14 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  auth: typeof auth;
   completions: typeof completions;
+  http: typeof http;
   "lib/generator": typeof lib_generator;
   "lib/shareId": typeof lib_shareId;
   "lib/solver": typeof lib_solver;
   puzzles: typeof puzzles;
+  viewer: typeof viewer;
 }>;
 
 /**

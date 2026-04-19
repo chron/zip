@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef } from "react";
 import { motion } from "motion/react";
+import { WallLayer } from "@/components/WallLayer";
 import type { Coord, Puzzle } from "@/lib/types";
 import { coordKey, getNumberAt } from "@/lib/game";
 
@@ -136,40 +137,6 @@ export const Board = ({
     );
   }
 
-  // Walls — solid ink.
-  const wallLines = puzzle.walls.map((w, idx) => {
-    const { a, b } = w;
-    let x1 = 0;
-    let y1 = 0;
-    let x2 = 0;
-    let y2 = 0;
-    if (a.row === b.row) {
-      const col = Math.max(a.col, b.col);
-      x1 = col * CELL;
-      x2 = col * CELL;
-      y1 = a.row * CELL;
-      y2 = a.row * CELL + CELL;
-    } else {
-      const row = Math.max(a.row, b.row);
-      y1 = row * CELL;
-      y2 = row * CELL;
-      x1 = a.col * CELL;
-      x2 = a.col * CELL + CELL;
-    }
-    return (
-      <line
-        key={`wall-${idx}`}
-        x1={x1}
-        y1={y1}
-        x2={x2}
-        y2={y2}
-        stroke="var(--ink)"
-        strokeWidth={6}
-        strokeLinecap="round"
-      />
-    );
-  });
-
   // Path polyline through cell centers.
   const center = (c: Coord) => ({
     x: c.col * CELL + CELL / 2,
@@ -304,7 +271,7 @@ export const Board = ({
         )}
 
         {headCircle}
-        {wallLines}
+        <WallLayer walls={puzzle.walls} cellSize={CELL} />
         {numberCircles}
       </svg>
     </div>

@@ -1,3 +1,4 @@
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { generateShareId } from "./lib/shareId";
@@ -74,10 +75,15 @@ export const getRandom = query({
       )
       .collect();
 
-    const completedBefore = await ctx.db
-      .query("completions")
-      .withIndex("by_completedAt", (q) => q.lte("completedAt", before))
-      .collect();
+    const userId = await getAuthUserId(ctx);
+    const completedBefore = userId
+      ? await ctx.db
+          .query("completions")
+          .withIndex("by_userId_and_completedAt", (q) =>
+            q.eq("userId", userId).lte("completedAt", before),
+          )
+          .collect()
+      : [];
     const completedIds = new Set(completedBefore.map((c) => c.puzzleId));
     const unsolved = all.filter((p) => !completedIds.has(p._id));
 

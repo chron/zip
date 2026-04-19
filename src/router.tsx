@@ -6,11 +6,15 @@ import {
   Outlet,
   useRouterState,
 } from "@tanstack/react-router";
+import { useConvexAuth } from "convex/react";
+import { AuthMenu } from "@/components/AuthMenu";
 import { HomePage } from "@/pages/HomePage";
 import { PuzzlesPage } from "@/pages/PuzzlesPage";
 import { PuzzlePage } from "@/pages/PuzzlePage";
 import { EditorPage } from "@/pages/EditorPage";
 import { cn } from "@/lib/utils";
+
+const convexConfigured = Boolean(import.meta.env.VITE_CONVEX_URL);
 
 const rootRoute = createRootRoute({
   component: AppShell,
@@ -103,12 +107,24 @@ function AppShell() {
           <Link to="/editor" className={navLinkClass(pathname === "/editor")}>
             Editor
           </Link>
+          {convexConfigured && <AuthSlot />}
         </nav>
       </header>
       <main className="mx-auto w-full max-w-5xl px-4 sm:px-6">
         <Outlet />
       </main>
     </div>
+  );
+}
+
+function AuthSlot() {
+  const authState = useConvexAuth();
+
+  return (
+    <AuthMenu
+      isAuthenticated={authState.isAuthenticated}
+      isLoading={authState.isLoading}
+    />
   );
 }
 

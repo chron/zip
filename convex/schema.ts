@@ -1,3 +1,4 @@
+import { authTables } from "@convex-dev/auth/server";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
@@ -7,6 +8,7 @@ const coord = v.object({
 });
 
 export default defineSchema({
+  ...authTables,
   puzzles: defineTable({
     mode: v.string(),
     shareId: v.string(),
@@ -34,6 +36,7 @@ export default defineSchema({
     .index("by_mode_createdAt", ["mode", "createdAt"]),
   completions: defineTable({
     puzzleId: v.id("puzzles"),
+    userId: v.optional(v.id("users")),
     durationMs: v.number(),
     perceivedDifficulty: v.optional(
       v.union(
@@ -46,5 +49,6 @@ export default defineSchema({
     completedAt: v.number(),
   })
     .index("by_puzzleId", ["puzzleId"])
+    .index("by_userId_and_completedAt", ["userId", "completedAt"])
     .index("by_completedAt", ["completedAt"]),
 });

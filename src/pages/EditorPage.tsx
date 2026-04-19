@@ -10,6 +10,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useMutation } from "convex/react";
 import { Button } from "@/components/ui/button";
 import { Game } from "@/components/Game";
+import { WallLayer } from "@/components/WallLayer";
 import { cn } from "@/lib/utils";
 import type { Coord, NumberedCell, Puzzle, Wall } from "@/lib/types";
 import { api } from "../../convex/_generated/api";
@@ -596,7 +597,6 @@ const EditorBoard = ({
       wallHits.push(
         <WallHit
           key={`v-${row}-${col}`}
-          active={active}
           disabled={tool === "number"}
           ghost={tool === "wall" && !active}
           x1={col * CELL}
@@ -618,7 +618,6 @@ const EditorBoard = ({
       wallHits.push(
         <WallHit
           key={`h-${row}-${col}`}
-          active={active}
           disabled={tool === "number"}
           ghost={tool === "wall" && !active}
           x1={col * CELL + 6}
@@ -662,6 +661,7 @@ const EditorBoard = ({
           {gridLines}
           {solveTrace}
           {dragPreview}
+          <WallLayer walls={puzzle.walls} cellSize={CELL} />
           {wallHits}
           {numberChips}
         </svg>
@@ -739,7 +739,6 @@ const SolveTraceLayer = ({ trace }: { trace: SolveTrace }) => {
 };
 
 const WallHit = ({
-  active,
   disabled,
   ghost,
   x1,
@@ -748,7 +747,6 @@ const WallHit = ({
   y2,
   onClick,
 }: {
-  active: boolean;
   disabled: boolean;
   ghost: boolean;
   x1: number;
@@ -781,15 +779,14 @@ const WallHit = ({
       y1={y1}
       x2={x2}
       y2={y2}
-      stroke={active ? "var(--ink)" : "var(--tomato)"}
-      strokeWidth={active ? 7 : 3}
+      stroke="var(--tomato)"
+      strokeWidth={3}
       strokeLinecap="round"
-      strokeDasharray={active ? undefined : "8 7"}
+      strokeDasharray="8 7"
       className={cn(
         "transition-opacity",
-        active && "opacity-100",
-        !active && ghost && "opacity-0 group-hover:opacity-75",
-        !active && !ghost && "opacity-0",
+        ghost && "opacity-0 group-hover:opacity-75",
+        !ghost && "opacity-0",
       )}
     />
   </g>
