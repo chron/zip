@@ -32,6 +32,8 @@ export const Board = ({
 
   const vbW = width * CELL;
   const vbH = height * CELL;
+  const maxBoardWidth =
+    width >= height ? 520 : Math.round((520 * width) / height);
 
   const cellAt = useCallback(
     (clientX: number, clientY: number): Coord | null => {
@@ -249,7 +251,13 @@ export const Board = ({
     : null;
 
   return (
-    <div className="relative w-full max-w-[min(90vw,520px)] aspect-square">
+    <div
+      className="relative w-full"
+      style={{
+        aspectRatio: `${width} / ${height}`,
+        maxWidth: `min(90vw, ${maxBoardWidth}px)`,
+      }}
+    >
       {/* Riso offset plate behind the board — gives it a printed-sticker feel. */}
       <div
         aria-hidden
