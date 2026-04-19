@@ -10,7 +10,7 @@ import {
   tryRetract,
 } from "@/lib/game";
 
-export type UseGameResult = {
+type UseGameResult = {
   state: GameState;
   isDragging: boolean;
   beginAt: (cell: Coord) => void;

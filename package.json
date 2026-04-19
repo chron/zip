@@ -7,7 +7,13 @@
     "dev": "concurrently -k -n vite,convex -c blue,magenta \"vite\" \"convex dev\"",
     "dev:vite": "vite",
     "dev:convex": "convex dev",
-    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b",
+    "lint": "oxlint .",
+    "knip": "knip",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "bun run typecheck && bun run lint && bun run knip && bun run test",
+    "build": "bun run typecheck && vite build",
     "preview": "vite preview",
     "seed": "bun run scripts/seed.ts"
   },
@@ -18,9 +24,12 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "concurrently": "^9.2.1",
+    "knip": "^6.4.1",
+    "oxlint": "^1.60.0",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.3",
-    "vite": "^8.0.8"
+    "vite": "^8.0.8",
+    "vitest": "^4.1.4"
   },
   "dependencies": {
     "@fontsource-variable/bricolage-grotesque": "^5.2.10",

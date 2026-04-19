@@ -1,0 +1,17 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "convex/schema.ts",
+    "convex/puzzles.ts",
+    "src/index.css"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx}",
+    "scripts/**/*.ts",
+    "convex/**/*.ts"
+  ],
+  "ignoreIssues": {
+    "convex/**": ["exports", "types"],
+    "src/components/ui/**": ["exports", "types"]
+  }
+}

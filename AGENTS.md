@@ -5,3 +5,9 @@ When working on Convex code, **always read `convex/_generated/ai/guidelines.md` 
 
 Convex agent skills for common tasks can be installed by running `npx convex ai-files install`.
 <!-- convex-ai-end -->
+
+## Checks
+
+Before handing off code changes, run `bun run check`. It runs TypeScript (`tsc -b`), Oxlint, Knip, and the Vitest suite.
+
+Use `bun run test:watch` while iterating on game logic, and keep Knip findings intentional rather than silencing them unless a file is deliberately public API.
