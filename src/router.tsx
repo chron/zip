@@ -12,8 +12,6 @@ import { PuzzlePage } from "@/pages/PuzzlePage";
 import { EditorPage } from "@/pages/EditorPage";
 import { cn } from "@/lib/utils";
 
-const convexConfigured = Boolean(import.meta.env.VITE_CONVEX_URL);
-
 const rootRoute = createRootRoute({
   component: AppShell,
   notFoundComponent: NotFoundPage,
@@ -88,9 +86,6 @@ function AppShell() {
               />
             </span>
           </Link>
-          <div className="font-mono text-[10px] uppercase text-muted-foreground sm:hidden">
-            {convexConfigured ? "connected" : "offline"}
-          </div>
         </div>
 
         <nav className="flex flex-wrap items-center gap-2">
@@ -108,9 +103,6 @@ function AppShell() {
           <Link to="/editor" className={navLinkClass(pathname === "/editor")}>
             Editor
           </Link>
-          <div className="hidden font-mono text-[10px] uppercase text-muted-foreground sm:block">
-            {convexConfigured ? "connected" : "offline"}
-          </div>
         </nav>
       </header>
       <main className="mx-auto w-full max-w-5xl px-4 sm:px-6">
