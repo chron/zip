@@ -1,3 +1,11 @@
+# Zip
+
+A puzzle game based off LinkedIn Zip.
+
+NOTE: This project is in the prototyping phase! Don't worry about backwards compatibility and it's no big deal to delete and recreate data in the development database at any time.
+
+There will usually be a dev server running, so you won't need to start your own.
+
 <!-- convex-ai-start -->
 This project uses [Convex](https://convex.dev) as its backend.
 
@@ -9,5 +17,3 @@ Convex agent skills for common tasks can be installed by running `npx convex ai-
 ## Checks
 
 Before handing off code changes, run `bun run check`. It runs TypeScript (`tsc -b`), Oxlint, Knip, and the Vitest suite.
-
-Use `bun run test:watch` while iterating on game logic, and keep Knip findings intentional rather than silencing them unless a file is deliberately public API.
