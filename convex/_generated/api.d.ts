@@ -10,6 +10,7 @@
 
 import type * as auth from "../auth.js";
 import type * as completions from "../completions.js";
+import type * as daily from "../daily.js";
 import type * as http from "../http.js";
 import type * as lib_generator from "../lib/generator.js";
 import type * as lib_shareId from "../lib/shareId.js";
@@ -26,6 +27,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   completions: typeof completions;
+  daily: typeof daily;
   http: typeof http;
   "lib/generator": typeof lib_generator;
   "lib/shareId": typeof lib_shareId;

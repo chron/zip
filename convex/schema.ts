@@ -34,6 +34,18 @@ export default defineSchema({
     .index("by_createdAt", ["createdAt"])
     .index("by_shareId", ["shareId"])
     .index("by_mode_createdAt", ["mode", "createdAt"]),
+  // Schedules a puzzle to be "today's daily" for a given mode. The `puzzles`
+  // table stays a reusable pool; this table is the assignment layer on top.
+  dailyPuzzles: defineTable({
+    date: v.string(), // YYYY-MM-DD in UTC
+    mode: v.string(),
+    puzzleId: v.id("puzzles"),
+    assignedAt: v.number(),
+    assignedBy: v.union(v.literal("auto"), v.literal("manual")),
+  })
+    .index("by_date_and_mode", ["date", "mode"])
+    .index("by_mode_and_date", ["mode", "date"])
+    .index("by_puzzleId", ["puzzleId"]),
   completions: defineTable({
     puzzleId: v.id("puzzles"),
     userId: v.optional(v.id("users")),
