@@ -15,11 +15,18 @@ export type PerceivedDifficulty = "easy" | "medium" | "hard" | "expert";
 
 const OPTIONS: PerceivedDifficulty[] = ["easy", "medium", "hard", "expert"];
 
+export type StreakSummary = {
+  current: number;
+  longest: number;
+};
+
 type Props = {
   open: boolean;
   elapsedMs: number;
   generatedDifficulty: string | null;
   completionId: Id<"completions"> | null;
+  streak?: StreakSummary | null;
+  playAgainLabel?: string;
   onSetPerceivedDifficulty?: (
     completionId: Id<"completions">,
     difficulty: PerceivedDifficulty,
@@ -33,6 +40,8 @@ export const CompleteDialog = ({
   elapsedMs,
   generatedDifficulty,
   completionId,
+  streak,
+  playAgainLabel = "Play again",
   onSetPerceivedDifficulty,
   onPlayAgain,
   onOpenChange,
@@ -79,6 +88,27 @@ export const CompleteDialog = ({
           )}
         </div>
 
+        {streak && (
+          <div className="flex items-center justify-center gap-6 pb-2 text-center">
+            <div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink/60">
+                streak
+              </div>
+              <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-tomato">
+                {streak.current}
+              </div>
+            </div>
+            <div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink/60">
+                longest
+              </div>
+              <div className="mt-1 font-mono text-2xl font-bold tabular-nums text-ink">
+                {streak.longest}
+              </div>
+            </div>
+          </div>
+        )}
+
         {completionId && onSetPerceivedDifficulty && (
           <div className="flex flex-col items-center gap-2 pb-2">
             <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink/60">
@@ -108,7 +138,7 @@ export const CompleteDialog = ({
             onClick={onPlayAgain}
             className="w-full font-mono uppercase tracking-[0.12em] bg-ink text-paper hover:bg-ink/90"
           >
-            Play again
+            {playAgainLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

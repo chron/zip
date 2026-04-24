@@ -16,6 +16,7 @@ import type * as lib_generator from "../lib/generator.js";
 import type * as lib_shareId from "../lib/shareId.js";
 import type * as lib_solver from "../lib/solver.js";
 import type * as puzzles from "../puzzles.js";
+import type * as streaks from "../streaks.js";
 import type * as viewer from "../viewer.js";
 
 import type {
@@ -33,6 +34,7 @@ declare const fullApi: ApiFromModules<{
   "lib/shareId": typeof lib_shareId;
   "lib/solver": typeof lib_solver;
   puzzles: typeof puzzles;
+  streaks: typeof streaks;
   viewer: typeof viewer;
 }>;
 

@@ -30,6 +30,7 @@ const formatDailyLabel = (ymd: string): string => {
 const DailyGame = () => {
   const navigate = useNavigate();
   const today = useQuery(api.daily.todayWithPuzzle, {});
+  const streak = useQuery(api.streaks.mine, {});
   const ensureToday = useMutation(api.daily.ensureToday);
   const [ensureError, setEnsureError] = useState<string | null>(null);
 
@@ -100,12 +101,19 @@ const DailyGame = () => {
             <span>{puzzleRow.walls.length} walls</span>
           </>
         )}
+        {streak && streak.current > 0 && (
+          <>
+            <span className="mx-2 text-ink/20">/</span>
+            <span className="text-tomato">streak {streak.current}</span>
+          </>
+        )}
       </div>
       <Game
         key={puzzleRow._id}
         puzzle={puzzle}
         generatedDifficulty={puzzleRow.difficulty ?? null}
         newPuzzleLabel="Archive"
+        streak={streak}
         recordCompletion={recordCompletion}
         onSetPerceivedDifficulty={setPerceivedDifficulty}
         onNewPuzzle={handleOpenArchive}

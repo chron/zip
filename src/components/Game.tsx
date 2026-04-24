@@ -1,8 +1,9 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Board } from "./Board";
 import {
   CompleteDialog,
   type PerceivedDifficulty,
+  type StreakSummary,
 } from "./CompleteDialog";
 import { Button } from "@/components/ui/button";
 import { useGame } from "@/hooks/useGame";
@@ -15,6 +16,7 @@ type Props = {
   puzzle: Puzzle;
   generatedDifficulty?: string | null;
   newPuzzleLabel?: string;
+  streak?: StreakSummary | null;
   recordCompletion?: (
     durationMs: number,
   ) => Promise<Id<"completions"> | null>;
@@ -29,6 +31,7 @@ export const Game = ({
   puzzle,
   generatedDifficulty,
   newPuzzleLabel = "New puzzle",
+  streak,
   recordCompletion,
   onSetPerceivedDifficulty,
   onNewPuzzle,
@@ -63,6 +66,10 @@ export const Game = ({
 
   const elapsed = useElapsed(state.startedAt, state.completedAt);
   const done = isComplete(state, puzzle);
+  const endNumber = useMemo(
+    () => Math.max(...puzzle.numbers.map((n) => n.value)),
+    [puzzle.numbers],
+  );
 
   const handlePlayAgain = useCallback(() => {
     setDialogOpen(false);
@@ -114,10 +121,14 @@ export const Game = ({
 
       <div className="text-sm text-muted-foreground">
         Drag from{" "}
-        <span className="inline-flex h-5 w-5 translate-y-[3px] items-center justify-center rounded-full bg-tomato font-display text-[0.75rem] font-bold text-paper">
+        <span className="inline-grid h-5 w-5 place-items-center align-middle font-display text-[0.75rem] font-bold leading-none text-paper rounded-full bg-tomato">
           1
         </span>{" "}
-        through every cell, visiting numbers in order.
+        through{" "}
+        <span className="inline-grid h-5 w-5 place-items-center align-middle font-display text-[0.75rem] font-bold leading-none text-paper rounded-full bg-tomato">
+          {endNumber}
+        </span>
+        , visiting numbers in order, filling every cell.
       </div>
 
       <CompleteDialog
@@ -125,6 +136,8 @@ export const Game = ({
         elapsedMs={finalElapsed ?? 0}
         generatedDifficulty={generatedDifficulty ?? null}
         completionId={completionId}
+        streak={streak}
+        playAgainLabel={newPuzzleLabel}
         onSetPerceivedDifficulty={onSetPerceivedDifficulty}
         onPlayAgain={handlePlayAgain}
         onOpenChange={setDialogOpen}
