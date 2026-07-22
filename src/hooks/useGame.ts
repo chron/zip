@@ -7,14 +7,17 @@ import {
   getNumberAt,
   initialState,
   isComplete,
+  moveInDirection,
   tryRetract,
 } from "@/lib/game";
+import type { Direction } from "@/lib/game";
 
 type UseGameResult = {
   state: GameState;
   isDragging: boolean;
   beginAt: (cell: Coord) => void;
   moveTo: (cell: Coord) => void;
+  moveByKeyboard: (direction: Direction) => void;
   endDrag: () => void;
   reset: () => void;
 };
@@ -108,6 +111,15 @@ export const useGame = (
     setDragging(false);
   }, []);
 
+  const moveByKeyboard = useCallback(
+    (direction: Direction) => {
+      if (!puzzle) return;
+      setDragging(false);
+      setState((prev) => moveInDirection(prev, puzzle, direction));
+    },
+    [puzzle],
+  );
+
   // Fire completion callback once path fills and tail is the last number.
   useEffect(() => {
     if (!puzzle || completeFiredRef.current) return;
@@ -121,5 +133,13 @@ export const useGame = (
     }
   }, [state, puzzle, onComplete]);
 
-  return { state, isDragging, beginAt, moveTo, endDrag, reset };
+  return {
+    state,
+    isDragging,
+    beginAt,
+    moveTo,
+    moveByKeyboard,
+    endDrag,
+    reset,
+  };
 };

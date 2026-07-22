@@ -5,6 +5,7 @@ import {
   initialState,
   isAdjacent,
   isComplete,
+  moveInDirection,
   totalCells,
   tryRetract,
 } from "./game";
@@ -88,6 +89,9 @@ describe("game rules", () => {
         { row: 0, col: 1 },
       ),
     ).toBe(false);
+    expect(
+      canExtendTo(state([{ row: 0, col: 0 }]), puzzle, { row: -1, col: 0 }),
+    ).toBe(false);
   });
 
   it("retracts only to the previous path cell", () => {
@@ -102,6 +106,39 @@ describe("game rules", () => {
       { row: 1, col: 0 },
     ]);
     expect(tryRetract(current, { row: 0, col: 0 })).toBeNull();
+  });
+
+  it("starts at 1 and follows directional keyboard moves", () => {
+    const started = moveInDirection(initialState(), puzzle, "down", 250);
+    const moved = moveInDirection(started, puzzle, "right", 300);
+
+    expect(started).toEqual({
+      path: [
+        { row: 0, col: 0 },
+        { row: 1, col: 0 },
+      ],
+      startedAt: 250,
+      completedAt: null,
+    });
+    expect(moved.path).toEqual([
+      { row: 0, col: 0 },
+      { row: 1, col: 0 },
+      { row: 1, col: 1 },
+    ]);
+  });
+
+  it("uses reverse keyboard moves to retract and ignores blocked moves", () => {
+    const current = state([
+      { row: 0, col: 0 },
+      { row: 1, col: 0 },
+      { row: 1, col: 1 },
+    ]);
+
+    expect(moveInDirection(current, puzzle, "left").path).toEqual([
+      { row: 0, col: 0 },
+      { row: 1, col: 0 },
+    ]);
+    expect(moveInDirection(current, puzzle, "down")).toBe(current);
   });
 
   it("completes only when all cells are filled and the final number is last", () => {

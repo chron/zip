@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Board } from "./Board";
 import {
   CompleteDialog,
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useGame } from "@/hooks/useGame";
 import { formatElapsed, useElapsed } from "@/hooks/useTimer";
 import { isComplete } from "@/lib/game";
+import type { Direction } from "@/lib/game";
 import type { Puzzle } from "@/lib/types";
 import type { Id } from "../../convex/_generated/dataModel";
 
@@ -25,6 +26,26 @@ type Props = {
     difficulty: PerceivedDifficulty,
   ) => Promise<void>;
   onNewPuzzle: () => void;
+};
+
+const KEYBOARD_MOVE_INTERVAL_MS = 90;
+const MAX_BUFFERED_MOVES = 16;
+
+const arrowDirections: Partial<Record<string, Direction>> = {
+  ArrowUp: "up",
+  ArrowDown: "down",
+  ArrowLeft: "left",
+  ArrowRight: "right",
+};
+
+const isTypingTarget = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target.isContentEditable ||
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement
+  );
 };
 
 export const Game = ({
@@ -59,9 +80,46 @@ export const Game = ({
     [recordCompletion],
   );
 
-  const { state, beginAt, moveTo, endDrag, reset } = useGame(
+  const { state, beginAt, moveTo, moveByKeyboard, endDrag, reset } = useGame(
     puzzle,
     handleComplete,
+  );
+
+  const keyboardBufferRef = useRef<Direction[]>([]);
+  const keyboardTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const clearKeyboardBuffer = useCallback(() => {
+    keyboardBufferRef.current = [];
+    if (keyboardTimerRef.current !== null) {
+      clearInterval(keyboardTimerRef.current);
+      keyboardTimerRef.current = null;
+    }
+  }, []);
+
+  const enqueueKeyboardMove = useCallback(
+    (direction: Direction) => {
+      if (keyboardTimerRef.current === null) {
+        moveByKeyboard(direction);
+        keyboardTimerRef.current = setInterval(() => {
+          const next = keyboardBufferRef.current.shift();
+          if (next) {
+            moveByKeyboard(next);
+            return;
+          }
+
+          if (keyboardTimerRef.current !== null) {
+            clearInterval(keyboardTimerRef.current);
+            keyboardTimerRef.current = null;
+          }
+        }, KEYBOARD_MOVE_INTERVAL_MS);
+        return;
+      }
+
+      if (keyboardBufferRef.current.length < MAX_BUFFERED_MOVES) {
+        keyboardBufferRef.current.push(direction);
+      }
+    },
+    [moveByKeyboard],
   );
 
   const elapsed = useElapsed(state.startedAt, state.completedAt);
@@ -72,18 +130,56 @@ export const Game = ({
   );
 
   const handlePlayAgain = useCallback(() => {
+    clearKeyboardBuffer();
     setDialogOpen(false);
     setFinalElapsed(null);
     setCompletionId(null);
     onNewPuzzle();
-  }, [onNewPuzzle]);
+  }, [clearKeyboardBuffer, onNewPuzzle]);
 
   const handleReset = useCallback(() => {
+    clearKeyboardBuffer();
     setDialogOpen(false);
     setFinalElapsed(null);
     setCompletionId(null);
     reset();
-  }, [reset]);
+  }, [clearKeyboardBuffer, reset]);
+
+  const handlePointerDownCell = useCallback(
+    (cell: Parameters<typeof beginAt>[0]) => {
+      clearKeyboardBuffer();
+      beginAt(cell);
+    },
+    [beginAt, clearKeyboardBuffer],
+  );
+
+  useEffect(() => {
+    if (done) {
+      clearKeyboardBuffer();
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const direction = arrowDirections[event.key];
+      if (
+        !direction ||
+        event.altKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        isTypingTarget(event.target)
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      enqueueKeyboardMove(direction);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [clearKeyboardBuffer, done, enqueueKeyboardMove]);
+
+  useEffect(() => clearKeyboardBuffer, [clearKeyboardBuffer, puzzle]);
 
   return (
     <div className="flex flex-col items-center gap-6 py-8">
@@ -114,7 +210,7 @@ export const Game = ({
         puzzle={puzzle}
         path={state.path}
         isComplete={done}
-        onPointerDownCell={beginAt}
+        onPointerDownCell={handlePointerDownCell}
         onPointerEnterCell={moveTo}
         onPointerUp={endDrag}
       />
@@ -128,7 +224,7 @@ export const Game = ({
         <span className="inline-grid h-5 w-5 place-items-center align-middle font-display text-[0.75rem] font-bold leading-none text-paper rounded-full bg-tomato">
           {endNumber}
         </span>
-        , visiting numbers in order, filling every cell.
+        , or use the arrow keys. Visit numbers in order and fill every cell.
       </div>
 
       <CompleteDialog

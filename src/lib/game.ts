@@ -1,5 +1,14 @@
 import type { Coord, GameState, Puzzle } from "./types";
 
+export type Direction = "up" | "down" | "left" | "right";
+
+const directionDeltas: Record<Direction, Coord> = {
+  up: { row: -1, col: 0 },
+  down: { row: 1, col: 0 },
+  left: { row: 0, col: -1 },
+  right: { row: 0, col: 1 },
+};
+
 export const coordKey = (c: Coord) => `${c.row},${c.col}`;
 export const eqCoord = (a: Coord, b: Coord) => a.row === b.row && a.col === b.col;
 
@@ -45,6 +54,15 @@ export const canExtendTo = (
   puzzle: Puzzle,
   target: Coord,
 ): boolean => {
+  if (
+    target.row < 0 ||
+    target.row >= puzzle.height ||
+    target.col < 0 ||
+    target.col >= puzzle.width
+  ) {
+    return false;
+  }
+
   const tail = state.path[state.path.length - 1];
   if (!tail) return false;
   if (!isAdjacent(tail, target)) return false;
@@ -76,6 +94,41 @@ export const tryRetract = (state: GameState, target: Coord): GameState | null =>
   const prev = state.path[state.path.length - 2]!;
   if (!eqCoord(prev, target)) return null;
   return { ...state, path: state.path.slice(0, -1) };
+};
+
+export const moveInDirection = (
+  state: GameState,
+  puzzle: Puzzle,
+  direction: Direction,
+  now = Date.now(),
+): GameState => {
+  if (state.completedAt !== null || isComplete(state, puzzle)) return state;
+
+  let next = state;
+  let tail = next.path[next.path.length - 1];
+
+  // Keyboard play starts from 1 automatically, so it never needs a mouse click.
+  if (!tail) {
+    const start = puzzle.numbers.find((cell) => cell.value === 1);
+    if (!start) return state;
+    tail = { row: start.row, col: start.col };
+    next = {
+      path: [tail],
+      startedAt: state.startedAt ?? now,
+      completedAt: null,
+    };
+  }
+
+  const delta = directionDeltas[direction];
+  const target = {
+    row: tail.row + delta.row,
+    col: tail.col + delta.col,
+  };
+
+  const retracted = tryRetract(next, target);
+  if (retracted) return retracted;
+  if (canExtendTo(next, puzzle, target)) return extend(next, target);
+  return next;
 };
 
 export const isComplete = (state: GameState, puzzle: Puzzle): boolean => {
